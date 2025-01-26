@@ -7,9 +7,10 @@ use App\Models\User;
 use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
-class RegisterController extends Controller
+class KeycloakController extends Controller
 {
     public function register(Request $request)
     {
@@ -66,11 +67,21 @@ class RegisterController extends Controller
             return response()->json(['erro' => 'Erro o registrar o usuário no keycloak: ' . $e->getMessage()], 500);
         }
 
-        $user = User::create([
-            'name' => $request->input('firstName') . ' ' . $request->input('lastName'),
-            'email' => $request->email,
-            'password' => Hash::make($request->password)
+        $user = User::firstOrCreate([
+            'email' => $userData['email'],
+        ], [
+            'name' => $request->input('firstName'). ' '. $request->input('lastName'),
+            'password' => Hash::make($request->input('password'))
         ]);
+
+        $user->providers()->updateOrCreate(
+            [
+                'user_id' => $user['id'],
+            ],
+            [
+                'provider_name' => 'keycloak',
+            ]
+        );
 
         return response()->json(['message' => 'Usuário registrado com sucesso', 'user' => $user], 201);
     }
@@ -97,4 +108,46 @@ class RegisterController extends Controller
             return response()->json('Erro ao obter o token do Keycloak: ' . $e->getMessage(), 500);
         }
     }
+
+    // public function logout() {
+
+    //     $keycloakBaseUrl = config('services.keycloak.base_url');
+    //     $realm = config('services.keycloak.realms');
+
+    //     // URL for logging out of Keycloak
+    //     $keycloakLogoutUrl = "{$keycloakBaseUrl}/realms/{$realm}/protocol/openid-connect/logout";
+
+    //     // dd(Auth::user());
+    //     // Recuperar o token de ID do usuário autenticado
+    //     $idToken = Auth::user()->id_token; // Ajuste conforme o local de armazenamento do token
+
+    //     $client = new Client();
+
+    //     // Fazer a requisição de logout
+    //     // $response = Http::asForm()->post($keycloakLogoutUrl, [
+    //     //     'id_token_hint' => $idToken, // Token de ID do usuário autenticado
+    //     // ]);
+
+    //     $response = $client->post($keycloakLogoutUrl, [
+    //         'form_params' => [
+    //             'id_token_hint' => $idToken
+    //         ],
+    //     ]);
+
+    //     // Verificar se o logout foi bem-sucedido
+    //     if ($response->successful()) {
+    //         // dd("hasoudhahsdso");
+    //         // Realizar logout local no Laravel
+    //         Auth::logout();
+
+    //         // Redirecionar para a página inicial
+    //         return redirect('/');
+    //     }
+
+    //     // Caso ocorra erro, retornar com mensagem de erro
+    //     return response()->json([
+    //         'message' => 'Logout no Keycloak falhou.',
+    //         'error' => $response->body(),
+    //     ], 500);
+    // }
 }
