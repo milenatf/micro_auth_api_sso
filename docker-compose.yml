@@ -1,0 +1,79 @@
+services:
+  # image project
+  micro_auth_api:
+    container_name: micro_auth_api
+    build:
+      args:
+        user: milena
+        uid: 1000
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+    # depends_on:
+    #   - micro_auth_api_redis
+    networks:
+      - micro_auth_api_network
+      - keycloak_network
+
+  # nginx
+  micro_auth_api_nginx:
+    image: nginx:alpine
+    container_name: nginx_micro_auth_api
+    ports:
+      - "8004:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/:/etc/nginx/conf.d/
+    networks:
+      - micro_auth_api_network
+
+  # db mysql
+  db_micro_auth_api:
+    image: mysql:8.0
+    platform: linux/x86_64
+    container_name: db_micro_auth_api
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-laravel}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-userpass}
+      MYSQL_USER: ${DB_USERNAME:-username}
+    volumes:
+      - ./.docker/mysql/dbdata:/var/lib/mysql
+    ports:
+      - "3304:3306"
+    networks:
+      - micro_auth_api_network
+
+  # redis
+  # micro_auth_api_redis:
+  #   image: redis:latest
+  #   ports:
+  #     - "6373:6379"
+  #   networks:
+  #     - micro_auth_api_network
+
+  # queue
+  # micro_auth_api_queue:
+  #   build:
+  #     args:
+  #       user: milena
+  #       uid: 1000
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   # command: "php artisan queue:work"
+  #   volumes:
+  #     - ./:/var/www
+  #   depends_on:
+  #     - micro_auth_api_redis
+  #   networks:
+  #     - micro_auth_api_network
+  #     - shared_network
+
+networks:
+  micro_auth_api_network:
+    driver: bridge
+    name: micro_auth_api_network
+  keycloak_network:
+    external: true
